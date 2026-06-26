@@ -256,15 +256,27 @@ jobs:
           git clone --depth 1 --single-branch --branch $llamacppVersion https://github.com/ggerganov/llama.cpp.git
         }
         cd llama.cpp
-        
+
         # Get commit hash (5 digits) and store it as environment variable
         $commitHash = git rev-parse --short=5 HEAD
         echo "LLAMACPP_COMMIT_HASH=$commitHash" >> $env:GITHUB_ENV
         Write-Host "llama.cpp commit hash (5 digits): $commitHash"
-        
+
         # Show current commit info
         Write-Host "Current llama.cpp commit:"
         git log --oneline -1
+
+        # Workaround: upstream vendors/hip.h is missing the
+        # `cublasSgemmBatched -> hipblasSgemmBatched` mapping that out-prod.cu uses,
+        # which breaks all HIP/ROCm builds. Inject it idempotently (no-op once
+        # upstream adds it). See ggml-org/llama.cpp out-prod.cu:~112.
+        $hipShim = "ggml/src/ggml-cuda/vendors/hip.h"
+        if ((Test-Path $hipShim) -and -not (Select-String -Path $hipShim -SimpleMatch "cublasSgemmBatched" -Quiet)) {
+          Write-Host "Patching $hipShim: adding cublasSgemmBatched -> hipblasSgemmBatched"
+          (Get-Content $hipShim) -replace '#define cublasSgemm hipblasSgemm', "#define cublasSgemm hipblasSgemm`r`n#define cublasSgemmBatched hipblasSgemmBatched" | Set-Content $hipShim
+        } else {
+          Write-Host "$hipShim already defines cublasSgemmBatched (or file missing); no patch needed"
+        }
 
     - name: Build Llama.cpp + ROCm
       shell: cmd
@@ -643,17 +655,29 @@ jobs:
           git clone --depth 1 --single-branch --branch "$llamacpp_version" https://github.com/ggerganov/llama.cpp.git
         fi
         cd llama.cpp
-        
+
         # Get commit hash (5 digits) and store it as environment variable
         commit_hash=$(git rev-parse --short=5 HEAD)
         echo "LLAMACPP_COMMIT_HASH=$commit_hash" >> $GITHUB_ENV
         echo "llama.cpp commit hash (5 digits): $commit_hash"
-        
+
         # Show current commit info
         echo "Current llama.cpp commit:"
         git log --oneline -1
 
-        
+        # Workaround: upstream vendors/hip.h is missing the
+        # `cublasSgemmBatched -> hipblasSgemmBatched` mapping that out-prod.cu uses,
+        # which breaks all HIP/ROCm builds. Inject it idempotently (no-op once
+        # upstream adds it). See ggml-org/llama.cpp out-prod.cu:~112.
+        hip_shim="ggml/src/ggml-cuda/vendors/hip.h"
+        if [ -f "$hip_shim" ] && ! grep -q "cublasSgemmBatched" "$hip_shim"; then
+          echo "Patching $hip_shim: adding cublasSgemmBatched -> hipblasSgemmBatched"
+          sed -i '/#define cublasSgemm hipblasSgemm/a #define cublasSgemmBatched hipblasSgemmBatched' "$hip_shim"
+        else
+          echo "$hip_shim already defines cublasSgemmBatched (or file missing); no patch needed"
+        fi
+
+
     - name: Build Llama.cpp + ROCm
       run: |
         # Map GPU targets
