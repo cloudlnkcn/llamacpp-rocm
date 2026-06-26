@@ -272,10 +272,10 @@ jobs:
         # upstream adds it). See ggml-org/llama.cpp out-prod.cu:~112.
         $hipShim = "ggml/src/ggml-cuda/vendors/hip.h"
         if ((Test-Path $hipShim) -and -not (Select-String -Path $hipShim -SimpleMatch "cublasSgemmBatched" -Quiet)) {
-          Write-Host "Patching $hipShim: adding cublasSgemmBatched -> hipblasSgemmBatched"
+          Write-Host "Patching ${hipShim}: adding cublasSgemmBatched -> hipblasSgemmBatched"
           (Get-Content $hipShim) -replace '#define cublasSgemm hipblasSgemm', "#define cublasSgemm hipblasSgemm`r`n#define cublasSgemmBatched hipblasSgemmBatched" | Set-Content $hipShim
         } else {
-          Write-Host "$hipShim already defines cublasSgemmBatched (or file missing); no patch needed"
+          Write-Host "${hipShim} already defines cublasSgemmBatched (or file missing); no patch needed"
         }
 
     - name: Build Llama.cpp + ROCm
