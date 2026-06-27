@@ -930,7 +930,7 @@ jobs:
     - name: Generate release tag
       id: generate-tag
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Get all existing release tags that match the pattern b####
         existing_tags=$(gh release list --limit 1000 --json tagName --jq '.[].tagName' | grep -E '^b[0-9]{4}$' | sort -V || echo "")
@@ -1016,7 +1016,7 @@ jobs:
     - name: Create Release
       if: steps.check-tag.outputs.tag_exists == 'false'
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG="${{ steps.generate-tag.outputs.tag }}"
         # Get ROCm version from either Windows or Ubuntu build (whichever succeeded)
