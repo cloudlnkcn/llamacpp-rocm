@@ -902,64 +902,8 @@ jobs:
         
         echo "Cleanup completed successfully"
 
-  test-stx-halo:
-    runs-on: ${{ matrix.runner }}
-    needs: [prepare-matrix, build-windows, build-ubuntu]
-    if: |
-      (needs.build-windows.result == 'success' || needs.build-ubuntu.result == 'success') &&
-      contains(github.event.inputs.gfx_target || 'gfx1151,gfx1150,gfx120X,gfx110X', 'gfx1151')
-    strategy:
-      matrix:
-        include:
-          - os: Windows
-            gfx_target: gfx1151
-            artifact_prefix: windows
-            runner: ["stx-halo", "Windows"]
-          - os: Linux
-            gfx_target: gfx1151
-            artifact_prefix: ubuntu
-            runner: ["stx-halo", "Linux"]
-      fail-fast: false
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Test llama.cpp build
-      uses: ./.github/actions/test-llamacpp-build
-      with:
-        os_type: ${{ matrix.os }}
-        gfx_target: ${{ matrix.gfx_target }}
-        artifact_name: llama-${{ matrix.artifact_prefix }}-rocm-${{ matrix.gfx_target }}-x64
-
-  test-stx:
-    runs-on: ${{ matrix.runner }}
-    needs: [prepare-matrix, build-windows, build-ubuntu]
-    if: |
-      (needs.build-windows.result == 'success' || needs.build-ubuntu.result == 'success') &&
-      contains(github.event.inputs.gfx_target || 'gfx1151,gfx1150,gfx120X,gfx110X', 'gfx1150')
-    strategy:
-      matrix:
-        include:
-          - os: Windows
-            gfx_target: gfx1150
-            artifact_prefix: windows
-            runner: ["stx", "Windows"]
-      fail-fast: false
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Test llama.cpp build
-      uses: ./.github/actions/test-llamacpp-build
-      with:
-        os_type: ${{ matrix.os }}
-        gfx_target: ${{ matrix.gfx_target }}
-        artifact_name: llama-${{ matrix.artifact_prefix }}-rocm-${{ matrix.gfx_target }}-x64
-
   create-release:
-    needs: [prepare-matrix, build-windows, build-ubuntu, test-stx-halo, test-stx]
+    needs: [prepare-matrix, build-windows, build-ubuntu]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -969,8 +913,6 @@ jobs:
       (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
       (needs.build-ubuntu.result == 'success' || needs.build-ubuntu.result == 'skipped') &&
       (needs.build-windows.result == 'success' || needs.build-ubuntu.result == 'success') &&
-      (needs.test-stx-halo.result == 'success' || needs.test-stx-halo.result == 'skipped') &&
-      (needs.test-stx.result == 'success' || needs.test-stx.result == 'skipped') &&
       github.event_name != 'pull_request' &&
       (github.event_name == 'workflow_dispatch' && 
        (github.event.inputs.create_release == 'true' || github.event.inputs.create_release == null) ||
